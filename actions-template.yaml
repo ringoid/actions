@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Actions Service Stack
+
+
+Mappings:
+
+  LogMap:
+    PapertrailLog:
+      stage: "logs7.papertrailapp.com:23213"
+      prod: "should-be-prod-papertril-endpoint"
+
+  FunctionName:
+    ActionFunction:
+      stage: stage-actions
+      prod: prod-actions
+    WarmUpFunction:
+      stage: stage-warm-up-actions
+      prod: prod-warm-up-actions
+
+Parameters:
+  Env:
+    Type: String
+    Default: stage
+    AllowedValues:
+      - stage
+      - prod
+    Description: Env name
+
+Globals:
+    Function:
+        Timeout: 300
+        MemorySize: 512
+        Runtime: go1.x
+        Environment:
+          Variables:
+            ENV: !Ref Env
+            PAPERTRAIL_LOG_ADDRESS: !FindInMap [LogMap, PapertrailLog, !Ref Env]
+            DELIVERY_STREAM:
+              Fn::ImportValue:
+                !Join [ "-", [ !Ref Env, DeliveryStreamExportName] ]
+            INTERNAL_AUTH_FUNCTION_NAME:
+              Fn::ImportValue:
+                !Join [ "-", [ !Ref Env, InternalGetUserIdFunctionExport] ]
+            COMMON_STREAM:
+              Fn::ImportValue:
+                !Join [ "-", [ !Ref Env, CommonEventStreamExportName] ]
+            NEED_WARM_UP_LAMBDA_NAMES: !Join [ ",", [ !FindInMap [FunctionName, ActionFunction, !Ref Env] ] ]
+        Tags:
+          Company: Ringoid
+          Service: actions
+          Environment: !Ref Env
+
+Resources:
+
+  WarmUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !FindInMap [FunctionName, WarmUpFunction, !Ref Env]
+      Handler: warm_up
+      CodeUri: ./warmup-actions.zip
+      Description: WarmUp actions function
+      Policies:
+        - AWSLambdaFullAccess
+
+  ScheduledWarmUpFunctionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduled WarmUp lambda function rule
+      ScheduleExpression: rate(8 minutes)
+      State: ENABLED
+      Name: !Join [ "-", [ !Ref Env, warm_up_actions_function_rule] ]
+      Targets:
+        -
+          Arn:
+            Fn::GetAtt:
+              - WarmUpFunction
+              - Arn
+          Id: ScheduledWarmUpActionsFunctionRuleId
+
+  PermissionForEventsToInvokeWarmUpFunction:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WarmUpFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+          - ScheduledWarmUpFunctionRule
+          - Arn
+
+
+  ActionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !FindInMap [FunctionName, ActionFunction, !Ref Env]
+      Handler: actions
+      CodeUri: ./actions.zip
+      Description: Actions function
+      Policies:
+        - AWSLambdaFullAccess
+        - AmazonKinesisFirehoseFullAccess
+        - AmazonKinesisFullAccess
+      Events:
+        StartEvent:
+          Type: Api
+          Properties:
+            Path: /actions
+            Method: post
