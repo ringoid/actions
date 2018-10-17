@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	LikeActionType = "LIKE"
-	ViewActionType = "VIEW"
+	LikeActionType   = "LIKE"
+	ViewActionType   = "VIEW"
+	BlockActionType  = "BLOCK"
+	UnlikeActionType = "UNLIKE"
 )
 
 type UserLikePhotoEvent struct {
@@ -72,6 +74,62 @@ func NewUserViewPhotoEvent(userId, photoId, originPhotoId, targetUserId, source 
 		Source:                source,
 		UnixTime:              time.Now().Unix(),
 		EventType:             "ACTION_USER_VIEW_PHOTO",
+		InternalServiceSource: serviceName,
+	}
+}
+
+type UserBlockOtherEvent struct {
+	UserId                string `json:"userId"`
+	TargetUserId          string `json:"targetUserId"`
+	BlockedAt             int    `json:"blockedAt"`
+	Source                string `json:"source"`
+	UnixTime              int64  `json:"unixTime"`
+	EventType             string `json:"eventType"`
+	InternalServiceSource string `json:"internalServiceSource"`
+}
+
+func (event UserBlockOtherEvent) String() string {
+	return fmt.Sprintf("%#v", event)
+}
+
+func NewUserBlockOtherEvent(userId, targetUserId, source string, blockedAt int, serviceName string) *UserBlockOtherEvent {
+	return &UserBlockOtherEvent{
+		UserId:                userId,
+		TargetUserId:          targetUserId,
+		BlockedAt:             blockedAt,
+		Source:                source,
+		UnixTime:              time.Now().Unix(),
+		EventType:             "ACTION_USER_BLOCK_OTHER",
+		InternalServiceSource: serviceName,
+	}
+}
+
+type UserUnLikePhotoEvent struct {
+	UserId                string `json:"userId"`
+	PhotoId               string `json:"photoId"`
+	OriginPhotoId         string `json:"originPhotoId"`
+	TargetUserId          string `json:"targetUserId"`
+	Source                string `json:"source"`
+	UnLikedAt             int    `json:"unLikedAt"`
+	UnixTime              int64  `json:"unixTime"`
+	EventType             string `json:"eventType"`
+	InternalServiceSource string `json:"internalServiceSource"`
+}
+
+func (event UserUnLikePhotoEvent) String() string {
+	return fmt.Sprintf("%#v", event)
+}
+
+func NewUserUnLikePhotoEvent(userId, photoId, originPhotoId, targetUserId, source string, unLikedAt int, serviceName string) *UserUnLikePhotoEvent {
+	return &UserUnLikePhotoEvent{
+		UserId:                userId,
+		PhotoId:               photoId,
+		OriginPhotoId:         originPhotoId,
+		TargetUserId:          targetUserId,
+		UnLikedAt:             unLikedAt,
+		Source:                source,
+		UnixTime:              time.Now().Unix(),
+		EventType:             "ACTION_USER_UNLIKE_PHOTO",
 		InternalServiceSource: serviceName,
 	}
 }

@@ -65,7 +65,20 @@ Possible errorCodes:
 3. BLOCK
 
     {
+       "actionType":"BLOCK",
+       "targetUserId":"skdfkjhkjsdhf",
+       "actionTime":12342342354 //unix time
     }
+
+4. UNLIKE
+
+    {
+        "actionType":"UNLIKE",
+        "targetPhotoId":"640x480_ksjdhfkjhhsh",
+        "targetUserId":"skdfkjhkjsdhf",
+        "actionTime":12342342354 //unix time
+    }
+
 
 ## Analytics Events
 
@@ -76,12 +89,13 @@ Possible errorCodes:
 * originPhotoId - string
 * targetUserId - string
 * likeCount - int
+* likedAt - int
 * source - string
 * unixTime - int
 * eventType - string (ACTION_USER_LIKE_PHOTO)
 * internalServiceSource - string
 
-1. ACTION_USER_VIEW_PHOTO
+2. ACTION_USER_VIEW_PHOTO
 
 * userId - string
 * photoId - string
@@ -89,7 +103,30 @@ Possible errorCodes:
 * targetUserId - string
 * viewCount - int
 * viewTimeSec - int
+* viewAt - int
 * source - string
 * unixTime - int
 * eventType - string (ACTION_USER_VIEW_PHOTO)
+* internalServiceSource - string
+
+3. ACTION_USER_BLOCK_OTHER
+
+* userId - string
+* targetUserId - string
+* blockedAt - int
+* source - string
+* unixTime - int
+* eventType - string (ACTION_USER_BLOCK_OTHER)
+* internalServiceSource - string
+
+4. ACTION_USER_UNLIKE_PHOTO
+
+* userId - string
+* photoId - string
+* originPhotoId - string
+* targetUserId - string
+* unLikedAt - int
+* source - string
+* unixTime - int
+* eventType - string (ACTION_USER_UNLIKE_PHOTO)
 * internalServiceSource - string

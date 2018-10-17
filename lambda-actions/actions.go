@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/lambda"
+	"sort"
 )
 
 var anlogger *syslog.Logger
@@ -123,11 +124,12 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 	}
-
+	//todo:future place of optimization - we can use batch request model later
 	for _, each := range reqParam.Actions {
 		var event interface{}
+		var partitionKey string
 		originPhotoId, ok := apimodel.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
-		if !ok {
+		if !ok && each.ActionType != apimodel.BlockActionType {
 			errStr := apimodel.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
@@ -135,8 +137,16 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		switch each.ActionType {
 		case apimodel.LikeActionType:
 			event = apimodel.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.LikeCount, each.ActionTime, "")
+			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case apimodel.ViewActionType:
 			event = apimodel.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
+			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+		case apimodel.BlockActionType:
+			event = apimodel.NewUserBlockOtherEvent(userId, each.TargetUserId, reqParam.SourceFeed, each.ActionTime, "")
+			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+		case apimodel.UnlikeActionType:
+			event = apimodel.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.ActionTime, "")
+			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
 			errStr := apimodel.InternalServerError
@@ -144,7 +154,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 		}
 		apimodel.SendAnalyticEvent(event, userId, deliveryStreamName, awsDeliveryStreamClient, anlogger, lc)
-		ok, errStr = apimodel.SendCommonEvent(event, userId, commonStreamName, awsKinesisClient, anlogger, lc)
+		ok, errStr = apimodel.SendCommonEvent(event, userId, commonStreamName, partitionKey, awsKinesisClient, anlogger, lc)
 		if !ok {
 			errStr := apimodel.InternalServerError
 			anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
@@ -162,6 +172,20 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	anlogger.Debugf(lc, "actions.go : return successful resp [%s] for userId [%s]", string(body), userId)
 	anlogger.Infof(lc, "actions.go : successfully handle all actions for userId [%s]", userId)
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: string(body)}, nil
+}
+
+func generatePartitionKey(arr ... string) string {
+	sort.Strings(arr)
+	if len(arr) == 0 {
+		return ""
+	}
+	key := arr[0]
+	for index, each := range arr {
+		if index != 0 {
+			key += "_" + each
+		}
+	}
+	return key
 }
 
 func checkUserUserIds(req *apimodel.ActionReq, userId string, lc *lambdacontext.LambdaContext) (bool, string) {
@@ -201,9 +225,15 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 	}
 
 	for _, each := range req.Actions {
-		if each.ActionType == "" || each.TargetPhotoId == "" || each.TargetUserId == "" {
+		if each.ActionType == "" || each.TargetUserId == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, apimodel.WrongRequestParamsClientError
+			if each.ActionType == "LIKE" || each.ActionType == "VIEW" {
+				if each.TargetPhotoId == "" {
+					anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
+					return nil, false, apimodel.WrongRequestParamsClientError
+				}
+			}
 		}
 		if _, ok := apimodel.ActionNames[each.ActionType]; !ok {
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)

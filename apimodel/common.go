@@ -118,4 +118,6 @@ func init() {
 	ActionNames = make(map[string]bool)
 	ActionNames[LikeActionType] = true
 	ActionNames[ViewActionType] = true
+	ActionNames[BlockActionType] = true
+	ActionNames[UnlikeActionType] = true
 }
