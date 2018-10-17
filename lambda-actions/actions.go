@@ -136,16 +136,16 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 		switch each.ActionType {
 		case apimodel.LikeActionType:
-			event = apimodel.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.LikeCount, each.ActionTime, "")
+			event = apimodel.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.LikeCount, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case apimodel.ViewActionType:
-			event = apimodel.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
+			event = apimodel.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case apimodel.BlockActionType:
-			event = apimodel.NewUserBlockOtherEvent(userId, each.TargetUserId, reqParam.SourceFeed, each.ActionTime, "")
+			event = apimodel.NewUserBlockOtherEvent(userId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case apimodel.UnlikeActionType:
-			event = apimodel.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, reqParam.SourceFeed, each.ActionTime, "")
+			event = apimodel.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
@@ -214,17 +214,15 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 		return nil, false, apimodel.WrongRequestParamsClientError
 	}
 
-	if len(req.SourceFeed) == 0 {
-		anlogger.Errorf(lc, "actions.go : sourceFeed required param is nil, req %v", req)
-		return nil, false, apimodel.WrongRequestParamsClientError
-	}
-
-	if _, ok := apimodel.FeedNames[req.SourceFeed]; !ok {
-		anlogger.Errorf(lc, "actions.go : sourceFeed contains unsupported value [%s]", req.SourceFeed)
-		return nil, false, apimodel.WrongRequestParamsClientError
-	}
-
 	for _, each := range req.Actions {
+		if len(each.SourceFeed) == 0 {
+			anlogger.Errorf(lc, "actions.go : sourceFeed required param is nil, req %v", req)
+			return nil, false, apimodel.WrongRequestParamsClientError
+		}
+		if _, ok := apimodel.FeedNames[each.SourceFeed]; !ok {
+			anlogger.Errorf(lc, "actions.go : sourceFeed contains unsupported value [%s]", each.SourceFeed)
+			return nil, false, apimodel.WrongRequestParamsClientError
+		}
 		if each.ActionType == "" || each.TargetUserId == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, apimodel.WrongRequestParamsClientError

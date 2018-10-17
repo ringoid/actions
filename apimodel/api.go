@@ -34,7 +34,6 @@ func (resp InternalGetUserIdResp) String() string {
 
 type ActionReq struct {
 	AccessToken string   `json:"accessToken"`
-	SourceFeed  string   `json:"sourceFeed"`
 	Actions     []Action `json:"actions"`
 }
 
@@ -43,6 +42,7 @@ func (req ActionReq) String() string {
 }
 
 type Action struct {
+	SourceFeed    string `json:"sourceFeed"`
 	ActionType    string `json:"actionType"`
 	TargetPhotoId string `json:"targetPhotoId"`
 	TargetUserId  string `json:"targetUserId"`

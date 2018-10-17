@@ -19,7 +19,6 @@ Body:
 
     {
         "accessToken":"adfsdfsdfsdfsdfs",
-        "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
         "actions":[ACTION_OBJECT, ACTION_OBJECT]
     }
     
@@ -44,6 +43,7 @@ Possible errorCodes:
 1. LIKE
 
     {
+        "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
         "actionType":"LIKE",
         "targetPhotoId":"640x480_ksjdhfkjhhsh",
         "targetUserId":"skdfkjhkjsdhf",
@@ -54,6 +54,7 @@ Possible errorCodes:
 2. VIEW
 
     {
+       "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
        "actionType":"VIEW",
        "targetPhotoId":"640x480_ksjdhfkjhhsh",
        "targetUserId":"skdfkjhkjsdhf",
@@ -65,6 +66,7 @@ Possible errorCodes:
 3. BLOCK
 
     {
+       "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
        "actionType":"BLOCK",
        "targetUserId":"skdfkjhkjsdhf",
        "actionTime":12342342354 //unix time
@@ -73,6 +75,7 @@ Possible errorCodes:
 4. UNLIKE
 
     {
+        "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
         "actionType":"UNLIKE",
         "targetPhotoId":"640x480_ksjdhfkjhhsh",
         "targetUserId":"skdfkjhkjsdhf",
