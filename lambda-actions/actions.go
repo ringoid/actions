@@ -35,62 +35,60 @@ func init() {
 
 	env, ok = os.LookupEnv("ENV")
 	if !ok {
-		fmt.Printf("actions.go : env can not be empty ENV")
+		fmt.Printf("lambda-initialization : actions.go : env can not be empty ENV\n")
 		os.Exit(1)
 	}
-	fmt.Printf("actions.go : start with ENV = [%s]", env)
+	fmt.Printf("lambda-initialization : actions.go : start with ENV = [%s]\n", env)
 
 	papertrailAddress, ok = os.LookupEnv("PAPERTRAIL_LOG_ADDRESS")
 	if !ok {
-		fmt.Printf("actions.go : env can not be empty PAPERTRAIL_LOG_ADDRESS")
+		fmt.Printf("lambda-initialization : actions.go : env can not be empty PAPERTRAIL_LOG_ADDRESS\n")
 		os.Exit(1)
 	}
-	fmt.Printf("actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]", papertrailAddress)
+	fmt.Printf("lambda-initialization : actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]\n", papertrailAddress)
 
 	anlogger, err = syslog.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "actions"))
 	if err != nil {
-		fmt.Errorf("actions.go : error during startup : %v", err)
+		fmt.Errorf("lambda-initialization : actions.go : error during startup : %v\n", err)
 		os.Exit(1)
 	}
-	anlogger.Debugf(nil, "actions.go : logger was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : logger was successfully initialized")
 
 	internalAuthFunctionName, ok = os.LookupEnv("INTERNAL_AUTH_FUNCTION_NAME")
 	if !ok {
-		fmt.Printf("actions.go : env can not be empty INTERNAL_AUTH_FUNCTION_NAME")
-		os.Exit(1)
+		anlogger.Fatalf(nil, "lambda-initialization : actions.go : env can not be empty INTERNAL_AUTH_FUNCTION_NAME")
 	}
-	anlogger.Debugf(nil, "actions.go : start with INTERNAL_AUTH_FUNCTION_NAME = [%s]", internalAuthFunctionName)
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : start with INTERNAL_AUTH_FUNCTION_NAME = [%s]", internalAuthFunctionName)
 
 	awsSession, err = session.NewSession(aws.NewConfig().
 		WithRegion(apimodel.Region).WithMaxRetries(apimodel.MaxRetries).
 		WithLogger(aws.LoggerFunc(func(args ...interface{}) { anlogger.AwsLog(args) })).WithLogLevel(aws.LogOff))
 	if err != nil {
-		anlogger.Fatalf(nil, "actions.go : error during initialization : %v", err)
+		anlogger.Fatalf(nil, "lambda-initialization : actions.go : error during initialization : %v", err)
 	}
-	anlogger.Debugf(nil, "actions.go : aws session was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : aws session was successfully initialized")
 
 	deliveryStreamName, ok = os.LookupEnv("DELIVERY_STREAM")
 	if !ok {
-		anlogger.Fatalf(nil, "actions.go : env can not be empty DELIVERY_STREAM")
-		os.Exit(1)
+		anlogger.Fatalf(nil, "lambda-initialization : actions.go : env can not be empty DELIVERY_STREAM")
 	}
-	anlogger.Debugf(nil, "actions.go : start with DELIVERY_STREAM = [%s]", deliveryStreamName)
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : start with DELIVERY_STREAM = [%s]", deliveryStreamName)
 
 	commonStreamName, ok = os.LookupEnv("COMMON_STREAM")
 	if !ok {
-		anlogger.Fatalf(nil, "actions.go : env can not be empty COMMON_STREAM")
+		anlogger.Fatalf(nil, "lambda-initialization : actions.go : env can not be empty COMMON_STREAM")
 		os.Exit(1)
 	}
-	anlogger.Debugf(nil, "actions.go : start with DELIVERY_STREAM = [%s]", commonStreamName)
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : start with DELIVERY_STREAM = [%s]", commonStreamName)
 
 	awsKinesisClient = kinesis.New(awsSession)
-	anlogger.Debugf(nil, "actions.go : kinesis client was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : kinesis client was successfully initialized")
 
 	awsDeliveryStreamClient = firehose.New(awsSession)
-	anlogger.Debugf(nil, "actions.go : firehose client was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : firehose client was successfully initialized")
 
 	clientLambda = lambda.New(awsSession)
-	anlogger.Debugf(nil, "actions.go : lambda client was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : actions.go : lambda client was successfully initialized")
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {

@@ -75,8 +75,8 @@ var AllowedPhotoResolution map[string]bool
 var ResolutionValues map[string]int
 
 type BaseResponse struct {
-	ErrorCode    string `json:"errorCode"`
-	ErrorMessage string `json:"errorMessage"`
+	ErrorCode    string `json:"errorCode,omitempty"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
 func (resp BaseResponse) String() string {

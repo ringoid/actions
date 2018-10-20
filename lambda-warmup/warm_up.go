@@ -28,31 +28,29 @@ func init() {
 
 	env, ok = os.LookupEnv("ENV")
 	if !ok {
-		fmt.Printf("warm_up_actions.go : env can not be empty ENV")
+		fmt.Printf("lambda-initialization : warm_up_actions.go : env can not be empty ENV\n")
 		os.Exit(1)
 	}
-	fmt.Printf("warm_up_actions.go : start with ENV = [%s]", env)
+	fmt.Printf("lambda-initialization : warm_up_actions.go : start with ENV = [%s]\n", env)
 
 	papertrailAddress, ok = os.LookupEnv("PAPERTRAIL_LOG_ADDRESS")
 	if !ok {
-		fmt.Printf("warm_up_actions.go : env can not be empty PAPERTRAIL_LOG_ADDRESS")
+		fmt.Printf("lambda-initialization : warm_up_actions.go : env can not be empty PAPERTRAIL_LOG_ADDRESS\n")
 		os.Exit(1)
 	}
-	fmt.Printf("warm_up_actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]", papertrailAddress)
+	fmt.Printf("lambda-initialization : warm_up_actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]\n", papertrailAddress)
 
 	anlogger, err = syslog.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "warm-up-actions"))
 	if err != nil {
-		fmt.Errorf("warm_up_actions.go : error during startup : %v", err)
-		os.Exit(1)
+		fmt.Errorf("lambda-initialization : warm_up_actions.go : error during startup : %v", err)
 	}
-	anlogger.Debugf(nil, "warm_up_actions.go : logger was successfully initialized")
+	anlogger.Debugf(nil, "lambda-initialization : warm_up_actions.go : logger was successfully initialized")
 
 	allLambdaNames, ok = os.LookupEnv("NEED_WARM_UP_LAMBDA_NAMES")
 	if !ok {
-		fmt.Printf("warm_up_actions.go : env can not be empty NEED_WARM_UP_LAMBDA_NAMES")
-		os.Exit(1)
+		anlogger.Fatalf(nil,"lambda-initialization : warm_up_actions.go : env can not be empty NEED_WARM_UP_LAMBDA_NAMES")
 	}
-	anlogger.Debugf(nil, "warm_up_actions.go : start with NEED_WARM_UP_LAMBDA_NAMES = [%s]", allLambdaNames)
+	anlogger.Debugf(nil, "lambda-initialization : warm_up_actions.go : start with NEED_WARM_UP_LAMBDA_NAMES = [%s]", allLambdaNames)
 
 	awsSession, err = session.NewSession(aws.NewConfig().
 		WithRegion(apimodel.Region).WithMaxRetries(apimodel.MaxRetries).
