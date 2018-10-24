@@ -46,8 +46,8 @@ func ParseAppVersionFromHeaders(headers map[string]string, anlogger *syslog.Logg
 	}
 }
 
-//return userId, ok, error string
-func CallVerifyAccessToken(buildNum int, isItAndroid bool, accessToken, functionName string, clientLambda *lambda.Lambda, anlogger *syslog.Logger, lc *lambdacontext.LambdaContext) (string, bool, string) {
+//return userId, ok, was user reported, error string
+func CallVerifyAccessToken(buildNum int, isItAndroid bool, accessToken, functionName string, clientLambda *lambda.Lambda, anlogger *syslog.Logger, lc *lambdacontext.LambdaContext) (string, bool, bool, string) {
 	req := InternalGetUserIdReq{
 		AccessToken: accessToken,
 		BuildNum:    buildNum,
@@ -56,41 +56,41 @@ func CallVerifyAccessToken(buildNum int, isItAndroid bool, accessToken, function
 	jsonBody, err := json.Marshal(req)
 	if err != nil {
 		anlogger.Errorf(lc, "common_action.go : error marshaling req %s into json : %v", req, err)
-		return "", false, InternalServerError
+		return "", false, false, InternalServerError
 	}
 
 	resp, err := clientLambda.Invoke(&lambda.InvokeInput{FunctionName: aws.String(functionName), Payload: jsonBody})
 	if err != nil {
 		anlogger.Errorf(lc, "common_action.go : error invoke function [%s] with body %s : %v", functionName, jsonBody, err)
-		return "", false, InternalServerError
+		return "", false, false, InternalServerError
 	}
 
 	if *resp.StatusCode != 200 {
 		anlogger.Errorf(lc, "common_action.go : status code = %d, response body %s for request %s", *resp.StatusCode, string(resp.Payload), jsonBody)
-		return "", false, InternalServerError
+		return "", false, false, InternalServerError
 	}
 
 	var response InternalGetUserIdResp
 	err = json.Unmarshal(resp.Payload, &response)
 	if err != nil {
 		anlogger.Errorf(lc, "common_action.go : error unmarshaling response %s into json : %v", string(resp.Payload), err)
-		return "", false, InternalServerError
+		return "", false, false, InternalServerError
 	}
 
 	if response.ErrorCode != "" {
 		anlogger.Errorf(lc, "common_action.go : error response from function [%s], response=%v", functionName, response)
 		switch response.ErrorCode {
 		case "InvalidAccessTokenClientError":
-			return "", false, InvalidAccessTokenClientError
+			return "", false, false, InvalidAccessTokenClientError
 		case "TooOldAppVersionClientError":
-			return "", false, TooOldAppVersionClientError
+			return "", false, false, TooOldAppVersionClientError
 		default:
-			return "", false, InternalServerError
+			return "", false, false, InternalServerError
 		}
 	}
 
 	anlogger.Debugf(lc, "common_action.go : successfully validate accessToken, userId [%s]", response.UserId)
-	return response.UserId, true, ""
+	return response.UserId, true, response.IsUserReported, ""
 }
 
 func SendAnalyticEvent(event interface{}, userId, deliveryStreamName string, awsDeliveryStreamClient *firehose.Firehose,
