@@ -42,6 +42,7 @@ Possible errorCodes:
 
 1. LIKE
 
+
     {
         "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
         "actionType":"LIKE",
@@ -52,6 +53,7 @@ Possible errorCodes:
     }
 
 2. VIEW
+
 
     {
        "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
@@ -65,6 +67,7 @@ Possible errorCodes:
 
 3. BLOCK
 
+
     {
        "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
        "actionType":"BLOCK",
@@ -73,6 +76,7 @@ Possible errorCodes:
     }
 
 4. UNLIKE
+
 
     {
         "sourceFeed":"new_faces", // who_liked_me, matches, messages (messages_inbox, messages_starred, messages_sent)
