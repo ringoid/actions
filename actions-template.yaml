@@ -8,13 +8,16 @@ Mappings:
   LogMap:
     PapertrailLog:
       stage: "logs7.papertrailapp.com:23213"
-      prod: "should-be-prod-papertril-endpoint"
+      test: "logs7.papertrailapp.com:16637"
+      prod: "logs7.papertrailapp.com:16747"
 
   FunctionName:
     ActionFunction:
+      test: test-actions
       stage: stage-actions
       prod: prod-actions
     WarmUpFunction:
+      test: test-warm-up-actions
       stage: stage-warm-up-actions
       prod: prod-warm-up-actions
 
@@ -23,6 +26,7 @@ Parameters:
     Type: String
     Default: stage
     AllowedValues:
+      - test
       - stage
       - prod
     Description: Env name
