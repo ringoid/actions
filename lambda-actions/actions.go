@@ -224,11 +224,13 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 		if each.ActionType == "" || each.TargetUserId == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, apimodel.WrongRequestParamsClientError
-			if each.ActionType == "LIKE" || each.ActionType == "VIEW" {
-				if each.TargetPhotoId == "" {
-					anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
-					return nil, false, apimodel.WrongRequestParamsClientError
-				}
+		}
+		if each.ActionType == apimodel.LikeActionType ||
+			each.ActionType == apimodel.ViewActionType ||
+			each.ActionType == apimodel.UnlikeActionType {
+			if each.TargetPhotoId == "" {
+				anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
+				return nil, false, apimodel.WrongRequestParamsClientError
 			}
 		}
 		if _, ok := apimodel.ActionNames[each.ActionType]; !ok {
