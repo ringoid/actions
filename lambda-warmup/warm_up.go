@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	basicLambda "github.com/aws/aws-lambda-go/lambda"
-	"../sys_log"
-	"../apimodel"
 	"github.com/aws/aws-sdk-go/aws"
 	"os"
 	"fmt"
@@ -13,9 +11,10 @@ import (
 	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"strings"
+	"github.com/ringoid/commons"
 )
 
-var anlogger *syslog.Logger
+var anlogger *commons.Logger
 var clientLambda *lambda.Lambda
 var allLambdaNames string
 
@@ -40,7 +39,7 @@ func init() {
 	}
 	fmt.Printf("lambda-initialization : warm_up_actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]\n", papertrailAddress)
 
-	anlogger, err = syslog.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "warm-up-actions"))
+	anlogger, err = commons.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "warm-up-actions"))
 	if err != nil {
 		fmt.Errorf("lambda-initialization : warm_up_actions.go : error during startup : %v", err)
 	}
@@ -48,12 +47,12 @@ func init() {
 
 	allLambdaNames, ok = os.LookupEnv("NEED_WARM_UP_LAMBDA_NAMES")
 	if !ok {
-		anlogger.Fatalf(nil,"lambda-initialization : warm_up_actions.go : env can not be empty NEED_WARM_UP_LAMBDA_NAMES")
+		anlogger.Fatalf(nil, "lambda-initialization : warm_up_actions.go : env can not be empty NEED_WARM_UP_LAMBDA_NAMES")
 	}
 	anlogger.Debugf(nil, "lambda-initialization : warm_up_actions.go : start with NEED_WARM_UP_LAMBDA_NAMES = [%s]", allLambdaNames)
 
 	awsSession, err = session.NewSession(aws.NewConfig().
-		WithRegion(apimodel.Region).WithMaxRetries(apimodel.MaxRetries).
+		WithRegion(commons.Region).WithMaxRetries(commons.MaxRetries).
 		WithLogger(aws.LoggerFunc(func(args ...interface{}) { anlogger.AwsLog(args) })).WithLogLevel(aws.LogOff))
 	if err != nil {
 		anlogger.Fatalf(nil, "warm_up_actions.go : error during initialization : %v", err)
@@ -68,7 +67,7 @@ func handler(ctx context.Context, request events.CloudWatchEvent) error {
 	lc, _ := lambdacontext.FromContext(ctx)
 	names := strings.Split(allLambdaNames, ",")
 	for _, n := range names {
-		apimodel.WarmUpLambda(n, clientLambda, anlogger, lc)
+		commons.WarmUpLambda(n, clientLambda, anlogger, lc)
 	}
 	return nil
 }

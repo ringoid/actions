@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	basicLambda "github.com/aws/aws-lambda-go/lambda"
-	"../sys_log"
 	"../apimodel"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/firehose"
@@ -16,9 +15,10 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"sort"
+	"github.com/ringoid/commons"
 )
 
-var anlogger *syslog.Logger
+var anlogger *commons.Logger
 var awsDeliveryStreamClient *firehose.Firehose
 var deliveryStreamName string
 var internalAuthFunctionName string
@@ -47,7 +47,7 @@ func init() {
 	}
 	fmt.Printf("lambda-initialization : actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]\n", papertrailAddress)
 
-	anlogger, err = syslog.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "actions"))
+	anlogger, err = commons.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "actions"))
 	if err != nil {
 		fmt.Errorf("lambda-initialization : actions.go : error during startup : %v\n", err)
 		os.Exit(1)
@@ -61,7 +61,7 @@ func init() {
 	anlogger.Debugf(nil, "lambda-initialization : actions.go : start with INTERNAL_AUTH_FUNCTION_NAME = [%s]", internalAuthFunctionName)
 
 	awsSession, err = session.NewSession(aws.NewConfig().
-		WithRegion(apimodel.Region).WithMaxRetries(apimodel.MaxRetries).
+		WithRegion(commons.Region).WithMaxRetries(commons.MaxRetries).
 		WithLogger(aws.LoggerFunc(func(args ...interface{}) { anlogger.AwsLog(args) })).WithLogLevel(aws.LogOff))
 	if err != nil {
 		anlogger.Fatalf(nil, "lambda-initialization : actions.go : error during initialization : %v", err)
@@ -96,11 +96,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	anlogger.Debugf(lc, "actions.go : start handle request %v", request)
 
-	if apimodel.IsItWarmUpRequest(request.Body, anlogger, lc) {
+	if commons.IsItWarmUpRequest(request.Body, anlogger, lc) {
 		return events.APIGatewayProxyResponse{}, nil
 	}
 
-	appVersion, isItAndroid, ok, errStr := apimodel.ParseAppVersionFromHeaders(request.Headers, anlogger, lc)
+	appVersion, isItAndroid, ok, errStr := commons.ParseAppVersionFromHeaders(request.Headers, anlogger, lc)
 	if !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
@@ -112,7 +112,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 	}
 
-	userId, ok, _, errStr := apimodel.CallVerifyAccessToken(appVersion, isItAndroid, reqParam.AccessToken, internalAuthFunctionName, clientLambda, anlogger, lc)
+	userId, ok, _, errStr := commons.CallVerifyAccessToken(appVersion, isItAndroid, reqParam.AccessToken, internalAuthFunctionName, clientLambda, anlogger, lc)
 	if !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
@@ -126,46 +126,46 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	for _, each := range reqParam.Actions {
 		var event interface{}
 		var partitionKey string
-		originPhotoId, ok := apimodel.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
-		if !ok && each.ActionType != apimodel.BlockActionType {
-			errStr := apimodel.InternalServerError
+		originPhotoId, ok := commons.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
+		if !ok && each.ActionType != commons.BlockActionType {
+			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 		}
 		switch each.ActionType {
-		case apimodel.LikeActionType:
-			event = apimodel.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.LikeCount, each.ActionTime, "")
+		case commons.LikeActionType:
+			event = commons.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.LikeCount, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
-		case apimodel.ViewActionType:
-			event = apimodel.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
+		case commons.ViewActionType:
+			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
-		case apimodel.BlockActionType:
-			event = apimodel.NewUserBlockOtherEvent(userId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
+		case commons.BlockActionType:
+			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
-		case apimodel.UnlikeActionType:
-			event = apimodel.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
+		case commons.UnlikeActionType:
+			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
-			errStr := apimodel.InternalServerError
+			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 		}
-		apimodel.SendAnalyticEvent(event, userId, deliveryStreamName, awsDeliveryStreamClient, anlogger, lc)
-		ok, errStr = apimodel.SendCommonEvent(event, userId, commonStreamName, partitionKey, awsKinesisClient, anlogger, lc)
+		commons.SendAnalyticEvent(event, userId, deliveryStreamName, awsDeliveryStreamClient, anlogger, lc)
+		ok, errStr = commons.SendCommonEvent(event, userId, commonStreamName, partitionKey, awsKinesisClient, anlogger, lc)
 		if !ok {
-			errStr := apimodel.InternalServerError
+			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 		}
 	}
 
-	resp := apimodel.BaseResponse{}
+	resp := commons.BaseResponse{}
 	body, err := json.Marshal(resp)
 	if err != nil {
 		anlogger.Errorf(lc, "actions.go : error while marshaling resp [%v] object for userId [%s] : %v", resp, userId, err)
-		anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, apimodel.InternalServerError)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: apimodel.InternalServerError}, nil
+		anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, commons.InternalServerError)
+		return events.APIGatewayProxyResponse{StatusCode: 200, Body: commons.InternalServerError}, nil
 	}
 	anlogger.Debugf(lc, "actions.go : return successful resp [%s] for userId [%s]", string(body), userId)
 	anlogger.Infof(lc, "actions.go : successfully handle all actions for userId [%s]", userId)
@@ -191,7 +191,7 @@ func checkUserUserIds(req *apimodel.ActionReq, userId string, lc *lambdacontext.
 	for _, each := range req.Actions {
 		if each.TargetUserId == userId {
 			anlogger.Errorf(lc, "actions.go : error, use the same targetUserId [%s] and userId [%s] for action %v", each.TargetUserId, userId, each)
-			return false, apimodel.WrongRequestParamsClientError
+			return false, commons.WrongRequestParamsClientError
 		}
 	}
 	anlogger.Debugf(lc, "actions.go : successfully check that legal userIds were used, req %v for userId [%s]", req, userId)
@@ -204,38 +204,38 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 	err := json.Unmarshal([]byte(params), &req)
 	if err != nil {
 		anlogger.Errorf(lc, "actions.go : error marshaling required params from the string [%s] : %v", params, err)
-		return nil, false, apimodel.InternalServerError
+		return nil, false, commons.InternalServerError
 	}
 
 	if req.Actions == nil {
 		anlogger.Errorf(lc, "actions.go : actions required param is nil, req %v", req)
-		return nil, false, apimodel.WrongRequestParamsClientError
+		return nil, false, commons.WrongRequestParamsClientError
 	}
 
 	for _, each := range req.Actions {
 		if len(each.SourceFeed) == 0 {
 			anlogger.Errorf(lc, "actions.go : sourceFeed required param is nil, req %v", req)
-			return nil, false, apimodel.WrongRequestParamsClientError
+			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if _, ok := apimodel.FeedNames[each.SourceFeed]; !ok {
+		if _, ok := commons.FeedNames[each.SourceFeed]; !ok {
 			anlogger.Errorf(lc, "actions.go : sourceFeed contains unsupported value [%s]", each.SourceFeed)
-			return nil, false, apimodel.WrongRequestParamsClientError
+			return nil, false, commons.WrongRequestParamsClientError
 		}
 		if each.ActionType == "" || each.TargetUserId == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
-			return nil, false, apimodel.WrongRequestParamsClientError
+			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.ActionType == apimodel.LikeActionType ||
-			each.ActionType == apimodel.ViewActionType ||
-			each.ActionType == apimodel.UnlikeActionType {
+		if each.ActionType == commons.LikeActionType ||
+			each.ActionType == commons.ViewActionType ||
+			each.ActionType == commons.UnlikeActionType {
 			if each.TargetPhotoId == "" {
 				anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
-				return nil, false, apimodel.WrongRequestParamsClientError
+				return nil, false, commons.WrongRequestParamsClientError
 			}
 		}
-		if _, ok := apimodel.ActionNames[each.ActionType]; !ok {
+		if _, ok := commons.ActionNames[each.ActionType]; !ok {
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
-			return nil, false, apimodel.WrongRequestParamsClientError
+			return nil, false, commons.WrongRequestParamsClientError
 		}
 	}
 
