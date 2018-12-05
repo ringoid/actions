@@ -14,14 +14,15 @@ func (req ActionReq) String() string {
 }
 
 type Action struct {
-	SourceFeed    string `json:"sourceFeed"`
-	ActionType    string `json:"actionType"`
-	TargetPhotoId string `json:"targetPhotoId"`
-	TargetUserId  string `json:"targetUserId"`
-	LikeCount     int    `json:"likeCount"`
-	ViewCount     int    `json:"viewCount"`
-	ViewTimeSec   int    `json:"viewTimeSec"`
-	ActionTime    int    `json:"actionTime"`
+	SourceFeed     string `json:"sourceFeed"`
+	ActionType     string `json:"actionType"`
+	TargetPhotoId  string `json:"targetPhotoId"`
+	TargetUserId   string `json:"targetUserId"`
+	LikeCount      int    `json:"likeCount"`
+	ViewCount      int    `json:"viewCount"`
+	ViewTimeSec    int    `json:"viewTimeSec"`
+	BlockReasonNum int    `json:"blockReasonNum"`
+	ActionTime     int    `json:"actionTime"`
 }
 
 func (req Action) String() string {

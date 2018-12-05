@@ -140,7 +140,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case commons.BlockActionType:
-			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
+			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.TargetPhotoId, originPhotoId, each.SourceFeed, each.ActionTime, each.BlockReasonNum, "")
 			partitionKey = generatePartitionKey(userId, each.TargetUserId)
 		case commons.UnlikeActionType:
 			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
