@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/lambda"
-	"sort"
 	"github.com/ringoid/commons"
 )
 
@@ -96,6 +95,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	anlogger.Debugf(lc, "actions.go : start handle request %v", request)
 
+	sourceIp := request.RequestContext.Identity.SourceIP
+
 	if commons.IsItWarmUpRequest(request.Body, anlogger, lc) {
 		return events.APIGatewayProxyResponse{}, nil
 	}
@@ -127,24 +128,24 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		var event interface{}
 		var partitionKey string
 		originPhotoId, ok := commons.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
-		if !ok && each.ActionType != commons.BlockActionType {
+		if !ok {
 			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
 			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 		}
 		switch each.ActionType {
 		case commons.LikeActionType:
-			event = commons.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.LikeCount, each.ActionTime, "")
-			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+			event = commons.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.LikeCount, each.ActionTime, "")
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.ViewActionType:
-			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
-			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.BlockActionType:
-			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.TargetPhotoId, originPhotoId, each.SourceFeed, each.ActionTime, each.BlockReasonNum, "")
-			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.TargetPhotoId, originPhotoId, each.SourceFeed, sourceIp, each.ActionTime, each.BlockReasonNum, "")
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.UnlikeActionType:
-			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, each.ActionTime, "")
-			partitionKey = generatePartitionKey(userId, each.TargetUserId)
+			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ActionTime, "")
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
 			errStr := commons.InternalServerError
@@ -170,20 +171,6 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	anlogger.Debugf(lc, "actions.go : return successful resp [%s] for userId [%s]", string(body), userId)
 	anlogger.Infof(lc, "actions.go : successfully handle all actions for userId [%s]", userId)
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: string(body)}, nil
-}
-
-func generatePartitionKey(arr ... string) string {
-	sort.Strings(arr)
-	if len(arr) == 0 {
-		return ""
-	}
-	key := arr[0]
-	for index, each := range arr {
-		if index != 0 {
-			key += "_" + each
-		}
-	}
-	return key
 }
 
 func checkUserUserIds(req *apimodel.ActionReq, userId string, lc *lambdacontext.LambdaContext) (bool, string) {
@@ -221,17 +208,9 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : sourceFeed contains unsupported value [%s]", each.SourceFeed)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.ActionType == "" || each.TargetUserId == "" {
+		if each.ActionType == "" || each.TargetUserId == "" || each.TargetPhotoId == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, commons.WrongRequestParamsClientError
-		}
-		if each.ActionType == commons.LikeActionType ||
-			each.ActionType == commons.ViewActionType ||
-			each.ActionType == commons.UnlikeActionType {
-			if each.TargetPhotoId == "" {
-				anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
-				return nil, false, commons.WrongRequestParamsClientError
-			}
 		}
 		if _, ok := commons.ActionNames[each.ActionType]; !ok {
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
