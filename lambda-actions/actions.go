@@ -25,6 +25,8 @@ var awsKinesisClient *kinesis.Kinesis
 var commonStreamName string
 var clientLambda *lambda.Lambda
 
+const maxMessageLengthInSymbols = 1000
+
 func init() {
 	var env string
 	var ok bool
@@ -145,6 +147,15 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.UnlikeActionType:
 			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ActionTime, "")
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+		case commons.MessageActionType:
+			if len([]rune(each.Text)) > maxMessageLengthInSymbols {
+				anlogger.Errorf(lc, "actions.go : too long [%d] text [%s] for userId [%s]", len([]rune(each.Text)), each.Text, userId)
+				errStr := commons.WrongRequestParamsClientError
+				anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
+				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			}
+			event = commons.NewUserMsgEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)

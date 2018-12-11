@@ -18,6 +18,7 @@ type Action struct {
 	ActionType     string `json:"actionType"`
 	TargetPhotoId  string `json:"targetPhotoId"`
 	TargetUserId   string `json:"targetUserId"`
+	Text           string `json:"text"`
 	LikeCount      int    `json:"likeCount"`
 	ViewCount      int    `json:"viewCount"`
 	ViewTimeSec    int    `json:"viewTimeSec"`
