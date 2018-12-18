@@ -57,6 +57,23 @@ Globals:
 
 Resources:
 
+  ActionsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Ref AWS::StackName
+      StageName: Prod
+
+  APIBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: ActionsApiProdStage
+    Properties:
+      BasePath: actions
+      DomainName:
+        Fn::ImportValue:
+          !Join [ "-", [ !Ref Env, APIDomainNameExport] ]
+      RestApiId: !Ref ActionsApi
+      Stage: Prod
+
   WarmUpFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -111,3 +128,5 @@ Resources:
           Properties:
             Path: /actions
             Method: post
+            RestApiId: !Ref ActionsApi
+
