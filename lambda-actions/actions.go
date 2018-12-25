@@ -157,6 +157,9 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			}
 			event = commons.NewUserMsgEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+		case commons.OpenChatActionType:
+			event = commons.NewUserOpenChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.OpenChatCount, each.ActionTime, each.OpenChatTimeSec)
+			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
 			errStr := commons.InternalServerError
