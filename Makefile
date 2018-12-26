@@ -3,7 +3,6 @@ test-all: clean test-deploy
 prod-all: clean prod-deploy
 
 build:
-	go get -u github.com/ringoid/commons
 	@echo '--- Building warmup-image function ---'
 	GOOS=linux go build lambda-warmup/warm_up.go
 	@echo '--- Building actions function ---'
