@@ -208,13 +208,18 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 		return nil, false, commons.InternalServerError
 	}
 
-	if req.Actions == nil {
-		anlogger.Errorf(lc, "actions.go : actions required param is nil, req %v", req)
+	if req.AccessToken == "" {
+		anlogger.Errorf(lc, "actions.go : accessToken is empty", req)
+		return nil, false, commons.WrongRequestParamsClientError
+	}
+
+	if len(req.Actions) == 0 {
+		anlogger.Errorf(lc, "actions.go : actions are empty, req %v", req)
 		return nil, false, commons.WrongRequestParamsClientError
 	}
 
 	for _, each := range req.Actions {
-		if len(each.SourceFeed) == 0 {
+		if each.SourceFeed == "" {
 			anlogger.Errorf(lc, "actions.go : sourceFeed required param is nil, req %v", req)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
@@ -230,6 +235,11 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
+		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime < 0 || each.OpenChatTimeSec < 0 || each.OpenChatCount < 0 || each.ViewTimeSec < 0 || each.BlockReasonNum < 0 {
+			anlogger.Errorf(lc, "actions.go : some of numeric param < 0")
+			return nil, false, commons.WrongRequestParamsClientError
+		}
+
 	}
 
 	anlogger.Debugf(lc, "actions.go : successfully parse request string [%s] to %v", params, req)
