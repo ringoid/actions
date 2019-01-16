@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/ringoid/commons"
+	"sort"
 )
 
 var anlogger *commons.Logger
@@ -125,6 +126,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 	}
+
+	sort.Slice(reqParam.Actions, func(i, j int) bool {
+		return reqParam.Actions[i].ActionTime < reqParam.Actions[j].ActionTime
+	})
+
 	//todo:future place of optimization - we can use batch request model later
 	for _, each := range reqParam.Actions {
 		var event interface{}
@@ -175,7 +181,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		}
 	}
 
-	resp := commons.BaseResponse{}
+	resp := apimodel.ActionResponse{}
+	if len(reqParam.Actions) > 0 {
+		resp.LastActionTime = reqParam.Actions[len(reqParam.Actions)-1].ActionTime
+	}
+
 	body, err := json.Marshal(resp)
 	if err != nil {
 		anlogger.Errorf(lc, "actions.go : error while marshaling resp [%v] object for userId [%s] : %v", resp, userId, err)

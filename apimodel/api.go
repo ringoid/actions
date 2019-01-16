@@ -2,6 +2,7 @@ package apimodel
 
 import (
 	"fmt"
+	"github.com/ringoid/commons"
 )
 
 type ActionReq struct {
@@ -30,4 +31,13 @@ type Action struct {
 
 func (req Action) String() string {
 	return fmt.Sprintf("%#v", req)
+}
+
+type ActionResponse struct {
+	commons.BaseResponse
+	LastActionTime int `json:"lastActionTime"`
+}
+
+func (resp ActionResponse) String() string {
+	return fmt.Sprintf("%#v", resp)
 }
