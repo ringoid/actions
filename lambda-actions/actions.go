@@ -155,6 +155,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ActionTime, "")
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.MessageActionType:
+			if len(each.Text) == 0 {
+				anlogger.Errorf(lc, "actions.go : userId [%s], empty text in a message [%s]", userId, each.Text)
+				errStr := commons.WrongRequestParamsClientError
+				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			}
 			if len([]rune(each.Text)) > maxMessageLengthInSymbols {
 				anlogger.Errorf(lc, "actions.go : too long [%d] text [%s] for userId [%s]", len([]rune(each.Text)), each.Text, userId)
 				errStr := commons.WrongRequestParamsClientError
