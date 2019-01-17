@@ -15,18 +15,18 @@ func (req ActionReq) String() string {
 }
 
 type Action struct {
-	SourceFeed      string `json:"sourceFeed"`
-	ActionType      string `json:"actionType"`
-	TargetPhotoId   string `json:"targetPhotoId"`
-	TargetUserId    string `json:"targetUserId"`
-	Text            string `json:"text"`
-	LikeCount       int    `json:"likeCount"`
-	ViewCount       int    `json:"viewCount"`
-	ViewTimeSec     int    `json:"viewTimeSec"`
-	OpenChatCount   int    `json:"openChatCount"`
-	OpenChatTimeSec int    `json:"openChatTimeSec"`
-	BlockReasonNum  int    `json:"blockReasonNum"`
-	ActionTime      int    `json:"actionTime"`
+	SourceFeed         string `json:"sourceFeed"`
+	ActionType         string `json:"actionType"`
+	TargetPhotoId      string `json:"targetPhotoId"`
+	TargetUserId       string `json:"targetUserId"`
+	Text               string `json:"text"`
+	LikeCount          int    `json:"likeCount"`
+	ViewCount          int    `json:"viewCount"`
+	ViewTimeMillis     int64  `json:"viewTimeMillis"`
+	OpenChatCount      int    `json:"openChatCount"`
+	OpenChatTimeMillis int64  `json:"openChatTimeMillis"`
+	BlockReasonNum     int    `json:"blockReasonNum"`
+	ActionTime         int64  `json:"actionTime"`
 }
 
 func (req Action) String() string {
@@ -35,7 +35,7 @@ func (req Action) String() string {
 
 type ActionResponse struct {
 	commons.BaseResponse
-	LastActionTime int `json:"lastActionTime"`
+	LastActionTime int64 `json:"lastActionTime"`
 }
 
 func (resp ActionResponse) String() string {

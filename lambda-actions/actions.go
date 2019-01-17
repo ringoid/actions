@@ -146,7 +146,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			event = commons.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.LikeCount, each.ActionTime, "")
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.ViewActionType:
-			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ViewCount, each.ViewTimeSec, each.ActionTime, "")
+			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ViewCount, each.ViewTimeMillis, each.ActionTime, "")
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.BlockActionType:
 			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.TargetPhotoId, originPhotoId, each.SourceFeed, sourceIp, each.ActionTime, each.BlockReasonNum, "")
@@ -169,7 +169,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			event = commons.NewUserMsgEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		case commons.OpenChatActionType:
-			event = commons.NewUserOpenChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.OpenChatCount, each.ActionTime, each.OpenChatTimeSec)
+			event = commons.NewUserOpenChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.OpenChatCount, each.ActionTime, each.OpenChatTimeMillis)
 			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
@@ -250,7 +250,7 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime < 0 || each.OpenChatTimeSec < 0 || each.OpenChatCount < 0 || each.ViewTimeSec < 0 || each.BlockReasonNum < 0 {
+		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime < 0 || each.OpenChatTimeMillis < 0 || each.OpenChatCount < 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
 			anlogger.Errorf(lc, "actions.go : some of numeric param < 0")
 			return nil, false, commons.WrongRequestParamsClientError
 		}
