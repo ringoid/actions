@@ -144,16 +144,23 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		switch each.ActionType {
 		case commons.LikeActionType:
 			event = commons.NewUserLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.LikeCount, each.ActionTime, "")
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
 		case commons.ViewActionType:
 			event = commons.NewUserViewPhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ViewCount, each.ViewTimeMillis, each.ActionTime, "")
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
+
 		case commons.BlockActionType:
 			event = commons.NewUserBlockOtherEvent(userId, each.TargetUserId, each.TargetPhotoId, originPhotoId, each.SourceFeed, sourceIp, each.ActionTime, each.BlockReasonNum, "")
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
+
 		case commons.UnlikeActionType:
 			event = commons.NewUserUnLikePhotoEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ActionTime, "")
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
+
 		case commons.MessageActionType:
 			if len(each.Text) == 0 {
 				anlogger.Errorf(lc, "actions.go : userId [%s], empty text in a message [%s]", userId, each.Text)
@@ -167,10 +174,14 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 			}
 			event = commons.NewUserMsgEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
+
 		case commons.OpenChatActionType:
 			event = commons.NewUserOpenChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.OpenChatCount, each.ActionTime, each.OpenChatTimeMillis)
-			partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
+			partitionKey = commons.GeneratePartitionKey(userId)
+
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
 			errStr := commons.InternalServerError
