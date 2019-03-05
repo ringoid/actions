@@ -16,8 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/ringoid/commons"
 	"sort"
-	"crypto/md5"
 	"io"
+	"strings"
+	"crypto/sha1"
 )
 
 var anlogger *commons.Logger
@@ -180,7 +181,12 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 				anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
 				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
 			}
-			event = commons.NewUserMsgEvent(messageId, userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
+			conversationId, ok, errStr := generateConversationId(userId, each.TargetUserId, lc)
+			if !ok {
+				anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
+				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			}
+			event = commons.NewUserMsgEvent(messageId, conversationId, userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 			partitionKey = commons.GeneratePartitionKey(userId)
 
@@ -278,26 +284,43 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 	anlogger.Debugf(lc, "actions.go : successfully parse request string [%s] to %v", params, req)
 	return &req, true, ""
 }
+func generateConversationId(sourceUserId, targetUserId string, lc *lambdacontext.LambdaContext) (string, bool, string) {
+	anlogger.Debugf(lc, "actions.go : generate conversation id for source user id [%s] and target user id [%s]",
+		sourceUserId, targetUserId)
+	arr := []string{sourceUserId, targetUserId}
+	sort.Strings(arr)
+	str := strings.Join(arr, "_")
+	sha := sha1.New()
+	_, err := io.WriteString(sha, str)
+	if err != nil {
+		anlogger.Errorf(lc, "actions.go : error while write base string for conversation id sha1 algo, base string [%s] : %v", str, err)
+		return "", false, commons.InternalServerError
+	}
+	resultConversationId := fmt.Sprintf("%x", sha.Sum(nil))
+	anlogger.Debugf(lc, "actions.go : successfully generate conversation id [%s] for source user id [%s] and target user id [%s]",
+		resultConversationId, sourceUserId, targetUserId)
+	return resultConversationId, true, ""
+}
 
 func generateMessageId(sourceUserId, text string, actionTime int64, lc *lambdacontext.LambdaContext) (string, bool, string) {
-	md := md5.New()
-	_, err := io.WriteString(md, sourceUserId)
+	sha := sha1.New()
+	_, err := io.WriteString(sha, sourceUserId)
 	if err != nil {
-		anlogger.Errorf(lc, "actions.go : error while write source user id string to md5 algo, source user id [%s] : %v", sourceUserId, err)
+		anlogger.Errorf(lc, "actions.go : error while write source user id string to sha1 algo, source user id [%s] : %v", sourceUserId, err)
 		return "", false, commons.InternalServerError
 	}
-	_, err = io.WriteString(md, fmt.Sprintf("%v", actionTime))
+	_, err = io.WriteString(sha, fmt.Sprintf("%v", actionTime))
 	if err != nil {
-		anlogger.Errorf(lc, "actions.go : error while write action time string to md5 algo, actionTime [%v] : %v", actionTime, err)
+		anlogger.Errorf(lc, "actions.go : error while write action time string to sha1 algo, actionTime [%v] : %v", actionTime, err)
 		return "", false, commons.InternalServerError
 	}
-	_, err = io.WriteString(md, text)
+	_, err = io.WriteString(sha, text)
 	if err != nil {
-		anlogger.Errorf(lc, "actions.go : error while write text string to md5 algo, text [%s] : %v", text, err)
+		anlogger.Errorf(lc, "actions.go : error while write text string to sha1 algo, text [%s] : %v", text, err)
 		return "", false, commons.InternalServerError
 	}
 
-	resultMessageId := fmt.Sprintf("%x", md.Sum(nil))
+	resultMessageId := fmt.Sprintf("%x", sha.Sum(nil))
 	anlogger.Debugf(lc, "actions.go : successfully generate message id [%s]", resultMessageId)
 	return resultMessageId, true, ""
 }
