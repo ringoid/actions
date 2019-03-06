@@ -222,7 +222,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return events.APIGatewayProxyResponse{StatusCode: 200, Body: commons.InternalServerError}, nil
 	}
 	anlogger.Debugf(lc, "actions.go : return successful resp [%s] for userId [%s]", string(body), userId)
-	anlogger.Infof(lc, "actions.go : successfully handle all actions for userId [%s]", userId)
+	anlogger.Infof(lc, "actions.go : successfully handle [%d] actions for userId [%s]", len(reqParam.Actions), userId)
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: string(body)}, nil
 }
 
