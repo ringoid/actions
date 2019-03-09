@@ -274,11 +274,28 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime < 0 || each.OpenChatTimeMillis < 0 || each.OpenChatCount < 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
+		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime <= 0 || each.OpenChatTimeMillis < 0 || each.OpenChatCount < 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
 			anlogger.Errorf(lc, "actions.go : some of numeric param < 0")
 			return nil, false, commons.WrongRequestParamsClientError
 		}
 
+		switch each.ActionType {
+		case commons.LikeActionType:
+			if each.LikeCount == 0 {
+				anlogger.Errorf(lc, "actions.go : likeCount is 0 with action type %s", commons.LikeActionType)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
+		case commons.ViewActionType:
+			if each.ViewCount == 0 || each.ViewTimeMillis == 0{
+				anlogger.Errorf(lc, "actions.go : viewCount or viewTimeMillis is 0 with action type %s", commons.ViewActionType)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
+		case commons.MessageActionType:
+			if each.Text == ""{
+				anlogger.Errorf(lc, "actions.go : text is empty with action type %s", commons.MessageActionType)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
+		}
 	}
 
 	anlogger.Debugf(lc, "actions.go : successfully parse request string [%s] to %v", params, req)
