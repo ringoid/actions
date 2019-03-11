@@ -190,8 +190,8 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 			partitionKey = commons.GeneratePartitionKey(userId)
 
-		case commons.OpenChatActionType:
-			event = commons.NewUserOpenChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.OpenChatCount, each.ActionTime, each.OpenChatTimeMillis)
+		case commons.ViewChatActionType:
+			event = commons.NewUserViewChantEvent(userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.ActionTime, each.ViewTimeMillis)
 			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 			partitionKey = commons.GeneratePartitionKey(userId)
 
@@ -274,7 +274,7 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime <= 0 || each.OpenChatTimeMillis < 0 || each.OpenChatCount < 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
+		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime <= 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
 			anlogger.Errorf(lc, "actions.go : some of numeric param < 0")
 			return nil, false, commons.WrongRequestParamsClientError
 		}
@@ -286,13 +286,20 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 				return nil, false, commons.WrongRequestParamsClientError
 			}
 		case commons.ViewActionType:
-			if each.ViewCount == 0 || each.ViewTimeMillis == 0{
+			if each.ViewCount == 0 || each.ViewTimeMillis == 0 {
 				anlogger.Errorf(lc, "actions.go : viewCount or viewTimeMillis is 0 with action type %s", commons.ViewActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
 		case commons.MessageActionType:
-			if each.Text == ""{
+			if each.Text == "" {
 				anlogger.Errorf(lc, "actions.go : text is empty with action type %s", commons.MessageActionType)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
+		case commons.ViewChatActionType:
+			if each.SourceFeed != commons.FeedNameWhoLikedMe &&
+				each.SourceFeed != commons.FeedNameMatches &&
+				each.SourceFeed != commons.FeedNameMessages {
+				anlogger.Errorf(lc, "actions.go : wrong source [%s] for action type %s", each.SourceFeed, commons.ViewChatActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
 		}
