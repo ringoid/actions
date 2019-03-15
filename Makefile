@@ -3,14 +3,10 @@ test-all: clean test-deploy
 prod-all: clean prod-deploy
 
 build:
-	@echo '--- Building warmup-image function ---'
-	GOOS=linux go build lambda-warmup/warm_up.go
 	@echo '--- Building actions function ---'
 	GOOS=linux go build lambda-actions/actions.go
 
 zip_lambda: build
-	@echo '--- Zip warmup-actions function ---'
-	zip warmup-actions.zip ./warm_up
 	@echo '--- Zip actions function ---'
 	zip actions.zip ./actions
 
@@ -37,8 +33,6 @@ prod-deploy: zip_lambda
 
 clean:
 	@echo '--- Delete old artifacts ---'
-	rm -rf warmup-actions.zip
-	rm -rf warm_up
 	rm -rf actions.zip
 	rm -rf actions
 

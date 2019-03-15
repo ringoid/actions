@@ -96,38 +96,42 @@ func init() {
 	anlogger.Debugf(nil, "lambda-initialization : actions.go : lambda client was successfully initialized")
 }
 
-func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.ALBTargetGroupResponse, error) {
 	lc, _ := lambdacontext.FromContext(ctx)
 
-	anlogger.Debugf(lc, "actions.go : start handle request %v", request)
-
-	sourceIp := request.RequestContext.Identity.SourceIP
-
-	if commons.IsItWarmUpRequest(request.Body, anlogger, lc) {
-		return events.APIGatewayProxyResponse{}, nil
+	userAgent := request.Headers["user-agent"]
+	if strings.HasPrefix(userAgent, "ELB-HealthChecker") {
+		return commons.NewServiceResponse("{}"), nil
 	}
+
+	if request.HTTPMethod != "POST" {
+		return commons.NewWrongHttpMethodServiceResponse(), nil
+	}
+	sourceIp := request.Headers["x-forwarded-for"]
+
+	anlogger.Debugf(lc, "actions.go : start handle request %v", request)
 
 	appVersion, isItAndroid, ok, errStr := commons.ParseAppVersionFromHeaders(request.Headers, anlogger, lc)
 	if !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+		return commons.NewServiceResponse(errStr), nil
 	}
 
 	reqParam, ok, errStr := parseParams(request.Body, lc)
 	if !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+		return commons.NewServiceResponse(errStr), nil
 	}
 
 	userId, ok, _, errStr := commons.CallVerifyAccessToken(appVersion, isItAndroid, reqParam.AccessToken, internalAuthFunctionName, clientLambda, anlogger, lc)
 	if !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+		return commons.NewServiceResponse(errStr), nil
 	}
 
 	if ok, errStr = checkUserUserIds(reqParam, userId, lc); !ok {
 		anlogger.Errorf(lc, "actions.go : return %s to client", errStr)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+		return commons.NewServiceResponse(errStr), nil
 	}
 
 	sort.Slice(reqParam.Actions, func(i, j int) bool {
@@ -142,7 +146,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		if !ok {
 			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
-			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			return commons.NewServiceResponse(errStr), nil
 		}
 		switch each.ActionType {
 		case commons.LikeActionType:
@@ -168,23 +172,23 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			if len(each.Text) == 0 {
 				anlogger.Errorf(lc, "actions.go : userId [%s], empty text in a message [%s]", userId, each.Text)
 				errStr := commons.WrongRequestParamsClientError
-				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+				return commons.NewServiceResponse(errStr), nil
 			}
 			if len([]rune(each.Text)) > maxMessageLengthInSymbols {
 				anlogger.Errorf(lc, "actions.go : too long [%d] text [%s] for userId [%s]", len([]rune(each.Text)), each.Text, userId)
 				errStr := commons.WrongRequestParamsClientError
 				anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
-				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+				return commons.NewServiceResponse(errStr), nil
 			}
 			messageId, ok, errStr := generateMessageId(userId, each.Text, each.ActionTime, lc)
 			if !ok {
 				anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
-				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+				return commons.NewServiceResponse(errStr), nil
 			}
 			conversationId, ok, errStr := generateConversationId(userId, each.TargetUserId, lc)
 			if !ok {
 				anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
-				return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+				return commons.NewServiceResponse(errStr), nil
 			}
 			event = commons.NewUserMsgEvent(messageId, conversationId, userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
@@ -199,14 +203,14 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
 			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go :  userId [%s], return %s to client", userId, errStr)
-			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			return commons.NewServiceResponse(errStr), nil
 		}
 		commons.SendAnalyticEvent(event, userId, deliveryStreamName, awsDeliveryStreamClient, anlogger, lc)
 		ok, errStr = commons.SendCommonEvent(event, userId, commonStreamName, partitionKey, awsKinesisClient, anlogger, lc)
 		if !ok {
 			errStr := commons.InternalServerError
 			anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
-			return events.APIGatewayProxyResponse{StatusCode: 200, Body: errStr}, nil
+			return commons.NewServiceResponse(errStr), nil
 		}
 	}
 
@@ -219,11 +223,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	if err != nil {
 		anlogger.Errorf(lc, "actions.go : error while marshaling resp [%v] object for userId [%s] : %v", resp, userId, err)
 		anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, commons.InternalServerError)
-		return events.APIGatewayProxyResponse{StatusCode: 200, Body: commons.InternalServerError}, nil
+		return commons.NewServiceResponse(commons.InternalServerError), nil
 	}
 	anlogger.Debugf(lc, "actions.go : return successful resp [%s] for userId [%s]", string(body), userId)
 	anlogger.Infof(lc, "actions.go : successfully handle [%d] actions for userId [%s] with lastActionTime [%v]", len(reqParam.Actions), userId, resp.LastActionTime)
-	return events.APIGatewayProxyResponse{StatusCode: 200, Body: string(body)}, nil
+	return commons.NewServiceResponse(string(body)), nil
 }
 
 func checkUserUserIds(req *apimodel.ActionReq, userId string, lc *lambdacontext.LambdaContext) (bool, string) {

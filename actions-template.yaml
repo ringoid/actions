@@ -16,10 +16,10 @@ Mappings:
       test: test-actions
       stage: stage-actions
       prod: prod-actions
-    WarmUpFunction:
-      test: test-warm-up-actions
-      stage: stage-warm-up-actions
-      prod: prod-warm-up-actions
+    ActionFunctionTargetGroup:
+      test: test-actions-tg
+      stage: stage-actions-tg
+      prod: prod-actions-tg
 
 Parameters:
   Env:
@@ -49,67 +49,12 @@ Globals:
             COMMON_STREAM:
               Fn::ImportValue:
                 !Join [ "-", [ !Ref Env, CommonEventStreamExportName] ]
-            NEED_WARM_UP_LAMBDA_NAMES: !Join [ ",", [ !FindInMap [FunctionName, ActionFunction, !Ref Env] ] ]
         Tags:
           Company: Ringoid
           Service: actions
           Environment: !Ref Env
 
 Resources:
-
-  ActionsApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Ref AWS::StackName
-      StageName: Prod
-
-  APIBasePathMapping:
-    Type: AWS::ApiGateway::BasePathMapping
-    DependsOn: ActionsApiProdStage
-    Properties:
-      BasePath: actions
-      DomainName:
-        Fn::ImportValue:
-          !Join [ "-", [ !Ref Env, APIDomainNameExport] ]
-      RestApiId: !Ref ActionsApi
-      Stage: Prod
-
-  WarmUpFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !FindInMap [FunctionName, WarmUpFunction, !Ref Env]
-      Handler: warm_up
-      CodeUri: ./warmup-actions.zip
-      Description: WarmUp actions function
-      Policies:
-        - AWSLambdaFullAccess
-
-  ScheduledWarmUpFunctionRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: Scheduled WarmUp lambda function rule
-      ScheduleExpression: rate(8 minutes)
-      State: ENABLED
-      Name: !Join [ "-", [ !Ref Env, warm_up_actions_function_rule] ]
-      Targets:
-        -
-          Arn:
-            Fn::GetAtt:
-              - WarmUpFunction
-              - Arn
-          Id: ScheduledWarmUpActionsFunctionRuleId
-
-  PermissionForEventsToInvokeWarmUpFunction:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref WarmUpFunction
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn:
-        Fn::GetAtt:
-          - ScheduledWarmUpFunctionRule
-          - Arn
-
 
   ActionFunction:
     Type: AWS::Serverless::Function
@@ -122,11 +67,28 @@ Resources:
         - AWSLambdaFullAccess
         - AmazonKinesisFirehoseFullAccess
         - AmazonKinesisFullAccess
-      Events:
-        StartEvent:
-          Type: Api
-          Properties:
-            Path: /actions
-            Method: post
-            RestApiId: !Ref ActionsApi
 
+  ActionTargetGroup:
+    Type: Custom::CreateTargetGroup
+    Properties:
+      ServiceToken:
+        Fn::ImportValue:
+          !Join [ "-", [ !Ref Env, CustomResourceFunctionExport] ]
+      CustomName: !FindInMap [FunctionName, ActionFunctionTargetGroup, !Ref Env]
+      CustomTargetsId: !GetAtt ActionFunction.Arn
+      TargetLambdaFunctionName: !Ref ActionFunction
+
+  ActionListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !GetAtt ActionTargetGroup.TargetGroupArn
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - "/actions/actions"
+      ListenerArn:
+        Fn::ImportValue:
+          !Join [ "-", [ !Ref Env, ListenerArnExport] ]
+      Priority: 301
