@@ -289,11 +289,12 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 				anlogger.Errorf(lc, "actions.go : likeCount is 0 with action type %s", commons.LikeActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
-		case commons.ViewActionType:
-			if each.ViewCount == 0 || each.ViewTimeMillis == 0 {
-				anlogger.Errorf(lc, "actions.go : viewCount or viewTimeMillis is 0 with action type %s", commons.ViewActionType)
-				return nil, false, commons.WrongRequestParamsClientError
-			}
+			//todo:need comment this coz a bug on ios
+			//case commons.ViewActionType:
+			//if each.ViewCount == 0 || each.ViewTimeMillis == 0 {
+			//	anlogger.Errorf(lc, "actions.go : viewCount or viewTimeMillis is 0 with action type %s", commons.ViewActionType)
+			//	return nil, false, commons.WrongRequestParamsClientError
+			//}
 		case commons.MessageActionType:
 			if each.Text == "" {
 				anlogger.Errorf(lc, "actions.go : text is empty with action type %s", commons.MessageActionType)
