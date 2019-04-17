@@ -138,7 +138,7 @@ func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.
 		return reqParam.Actions[i].ActionTime < reqParam.Actions[j].ActionTime
 	})
 
-	//todo:future place of optimization - we can use batch request model later
+	//to safe ordering we cann't use a batch here
 	for _, each := range reqParam.Actions {
 		var event interface{}
 		var partitionKey string
@@ -318,8 +318,10 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			}
 		case commons.LocationActionType:
 			var defaultValue float64
-			if each.Lat == defaultValue || each.Lon == defaultValue {
-				anlogger.Errorf(lc, "actions.go : wrong source lat [%v] or lon [%v] for action type %s", each.Lat, each.Lon, commons.LocationActionType)
+			if each.Lat == defaultValue || each.Lon == defaultValue ||
+				each.Lat < -90.0 || each.Lat > 90.0 ||
+				each.Lon < -180.0 || each.Lon > 180.0 {
+				anlogger.Errorf(lc, "actions.go : wrong lat [%v] or lon [%v] for action type %s", each.Lat, each.Lon, commons.LocationActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
 		}
