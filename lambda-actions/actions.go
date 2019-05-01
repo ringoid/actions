@@ -312,7 +312,10 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 		case commons.ViewChatActionType:
 			if each.SourceFeed != commons.FeedNameWhoLikedMe &&
 				each.SourceFeed != commons.FeedNameMatches &&
-				each.SourceFeed != commons.FeedNameMessages {
+				each.SourceFeed != commons.FeedNameMessages &&
+				each.SourceFeed != commons.FeedNameHellos &&
+				each.SourceFeed != commons.FeedNameInbox &&
+				each.SourceFeed != commons.FeedNameSent {
 				anlogger.Errorf(lc, "actions.go : wrong source [%s] for action type %s", each.SourceFeed, commons.ViewChatActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
@@ -330,6 +333,7 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 	anlogger.Debugf(lc, "actions.go : successfully parse request string [%s] to %v", params, req)
 	return &req, true, ""
 }
+
 func generateConversationId(sourceUserId, targetUserId string, lc *lambdacontext.LambdaContext) (string, bool, string) {
 	anlogger.Debugf(lc, "actions.go : generate conversation id for source user id [%s] and target user id [%s]",
 		sourceUserId, targetUserId)
