@@ -266,7 +266,7 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 		return nil, false, commons.WrongRequestParamsClientError
 	}
 
-	for _, each := range req.Actions {
+	for index, each := range req.Actions {
 		if each.ActionType == "" {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, commons.WrongRequestParamsClientError
@@ -287,8 +287,20 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.LikeCount < 0 || each.ViewCount < 0 || each.ActionTime <= 0 || each.ViewTimeMillis < 0 || each.BlockReasonNum < 0 {
-			anlogger.Errorf(lc, "actions.go : some of numeric param < 0")
+		if each.LikeCount < 0 {
+			anlogger.Errorf(lc, "actions.go : (swallow this error coz ios bug) numeric param (likeCount) < 0, [%v]", each.LikeCount)
+			req.Actions[index].LikeCount = 1
+		}
+		if each.ViewCount < 0 {
+			anlogger.Errorf(lc, "actions.go : (swallow this error coz ios bug) numeric param (viewCount) < 0, [%v]", each.ViewCount)
+			req.Actions[index].ViewCount = 1
+		}
+		if each.ViewTimeMillis < 0 {
+			anlogger.Errorf(lc, "actions.go : (swallow this error coz ios bug) numeric param (viewTimeMillis) < 0, [%v]", each.ViewTimeMillis)
+			req.Actions[index].ViewTimeMillis = 1
+		}
+		if each.ActionTime <= 0 || each.BlockReasonNum < 0 {
+			anlogger.Errorf(lc, "actions.go : some of numeric param < 0, actionTime [%v], blockReasonNum [%v]", each.ActionTime, each.BlockReasonNum)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
 
