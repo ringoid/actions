@@ -193,7 +193,7 @@ func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.
 				anlogger.Errorf(lc, "actions.go : userId [%s], return %s to client", userId, errStr)
 				return commons.NewServiceResponse(errStr), nil
 			}
-			event = commons.NewUserMsgEvent(messageId, conversationId, userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
+			event = commons.NewUserMsgEvent(messageId, each.ClientMessageId, conversationId, userId, each.TargetPhotoId, originPhotoId, each.TargetUserId, each.SourceFeed, sourceIp, each.Text, each.ActionTime)
 			//partitionKey = commons.GeneratePartitionKey(userId, each.TargetUserId)
 			partitionKey = commons.GeneratePartitionKey(userId)
 
@@ -321,6 +321,7 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 				anlogger.Errorf(lc, "actions.go : text is empty with action type %s", commons.MessageActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
+			//!!!todo:check that action has clientMsgId!!!
 		case commons.ViewChatActionType:
 			if each.SourceFeed != commons.FeedNameWhoLikedMe &&
 				each.SourceFeed != commons.FeedNameMatches &&
