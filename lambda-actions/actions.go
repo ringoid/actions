@@ -143,7 +143,7 @@ func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.
 		var event interface{}
 		var partitionKey string
 		var originPhotoId string
-		if each.ActionType != commons.LocationActionType {
+		if each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
 			originPhotoId, ok = commons.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
 			if !ok {
 				errStr := commons.InternalServerError
@@ -203,6 +203,9 @@ func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.
 			partitionKey = commons.GeneratePartitionKey(userId)
 		case commons.LocationActionType:
 			event = commons.NewUserChangeLocationEvent(userId, sourceIp, each.Lat, each.Lon, each.ActionTime)
+			partitionKey = commons.GeneratePartitionKey(userId)
+		case commons.ReadMessageActionType:
+			event = commons.NewUserReadMessageEvent(userId, sourceIp, each.OppositeUserId, each.MessageId, each.ActionTime)
 			partitionKey = commons.GeneratePartitionKey(userId)
 		default:
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s] for userId [%s]", each.ActionType, userId)
@@ -275,15 +278,15 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			anlogger.Errorf(lc, "actions.go : unsupported action type [%s]", each.ActionType)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if each.SourceFeed == "" && each.ActionType != commons.LocationActionType {
+		if each.SourceFeed == "" && each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
 			anlogger.Errorf(lc, "actions.go : sourceFeed required param is nil, req %v", req)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if _, ok := commons.FeedNames[each.SourceFeed]; !ok && each.ActionType != commons.LocationActionType {
+		if _, ok := commons.FeedNames[each.SourceFeed]; !ok && each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
 			anlogger.Errorf(lc, "actions.go : sourceFeed contains unsupported value [%s]", each.SourceFeed)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
-		if (each.TargetUserId == "" || each.TargetPhotoId == "") && each.ActionType != commons.LocationActionType {
+		if (each.TargetUserId == "" || each.TargetPhotoId == "") && each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
 			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
 			return nil, false, commons.WrongRequestParamsClientError
 		}
@@ -338,6 +341,11 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 				each.Lat < -90.0 || each.Lat > 90.0 ||
 				each.Lon < -180.0 || each.Lon > 180.0 {
 				anlogger.Errorf(lc, "actions.go : wrong lat [%v] or lon [%v] for action type %s", each.Lat, each.Lon, commons.LocationActionType)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
+		case commons.ReadMessageActionType:
+			if len(each.OppositeUserId) == 0 || len(each.MessageId) == 0 {
+				anlogger.Errorf(lc, "actions.go : wrong oppositeUserId [%v] or msgId [%v] for action type %s", each.OppositeUserId, each.MessageId, commons.ReadMessageActionType)
 				return nil, false, commons.WrongRequestParamsClientError
 			}
 		}

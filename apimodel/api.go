@@ -28,6 +28,8 @@ type Action struct {
 	Lon             float64 `json:"lon"`
 	ActionTime      int64   `json:"actionTime"`
 	ClientMessageId string  `json:"clientMsgId"`
+	OppositeUserId  string  `json:"userId"`
+	MessageId       string  `json:"msgId"`
 }
 
 func (req Action) String() string {
