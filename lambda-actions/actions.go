@@ -52,7 +52,7 @@ func init() {
 	}
 	fmt.Printf("lambda-initialization : actions.go : start with PAPERTRAIL_LOG_ADDRESS = [%s]\n", papertrailAddress)
 
-	anlogger, err = commons.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "actions"))
+	anlogger, err = commons.New(papertrailAddress, fmt.Sprintf("%s-%s", env, "actions"), apimodel.IsDebugLogEnabled)
 	if err != nil {
 		fmt.Errorf("lambda-initialization : actions.go : error during startup : %v\n", err)
 		os.Exit(1)

@@ -5,6 +5,10 @@ import (
 	"github.com/ringoid/commons"
 )
 
+const (
+	IsDebugLogEnabled = false
+)
+
 type ActionReq struct {
 	AccessToken string   `json:"accessToken"`
 	Actions     []Action `json:"actions"`
