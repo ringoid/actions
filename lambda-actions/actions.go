@@ -265,8 +265,8 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 	}
 
 	if len(req.Actions) == 0 {
-		anlogger.Errorf(lc, "actions.go : actions are empty, req %v", req)
-		return nil, false, commons.WrongRequestParamsClientError
+		anlogger.Errorf(lc, "actions.go : actions are empty, skip this error coz bug on android, req %v", req)
+		//return nil, false, commons.WrongRequestParamsClientError
 	}
 
 	for index, each := range req.Actions {
