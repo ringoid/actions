@@ -143,7 +143,7 @@ func handler(ctx context.Context, request events.ALBTargetGroupRequest) (events.
 		var event interface{}
 		var partitionKey string
 		var originPhotoId string
-		if each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
+		if each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType && each.ActionType != commons.ViewChatActionType {
 			originPhotoId, ok = commons.GetOriginPhotoId(userId, each.TargetPhotoId, anlogger, lc)
 			if !ok {
 				errStr := commons.InternalServerError
@@ -287,8 +287,13 @@ func parseParams(params string, lc *lambdacontext.LambdaContext) (*apimodel.Acti
 			return nil, false, commons.WrongRequestParamsClientError
 		}
 		if (each.TargetUserId == "" || each.TargetPhotoId == "") && each.ActionType != commons.LocationActionType && each.ActionType != commons.ReadMessageActionType {
-			anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
-			return nil, false, commons.WrongRequestParamsClientError
+			//todo:delete after fix on android
+			if each.TargetPhotoId == "" && each.ActionType != commons.ViewChatActionType {
+				anlogger.Errorf(lc, "actions.go : targetPhotoId is empty for VIEW_CHAT event, action %v", each)
+			} else {
+				anlogger.Errorf(lc, "actions.go : one of the action's required param is nil, action %v", each)
+				return nil, false, commons.WrongRequestParamsClientError
+			}
 		}
 		if each.LikeCount < 0 {
 			anlogger.Errorf(lc, "actions.go : (swallow this error coz ios bug) numeric param (likeCount) < 0, [%v]", each.LikeCount)
